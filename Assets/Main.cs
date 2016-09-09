@@ -4,57 +4,71 @@ using System.Collections;
 public class Main : MonoBehaviour {
 
 	public int num;
-	public float speed;
-	private GameObject[] obstacles;
+	public float maxSpeed;
+    public float acceleration;
+    public float deceleration;
+    private Obstacle[] spheres;
     private float rotationX = 0F;
     private float rotationY = 0F;
     private Quaternion originalRot;
+    private Vector3 accelDir = Vector3.zero;
+    private Vector3 velocity = Vector3.zero;
 
 	// Use this for initialization
 	void Start () {
         originalRot = transform.localRotation;
-		obstacles = new GameObject[num];
+        spheres = new Obstacle[num];
+
 		int i;
 		for (i = 0; i < num; i++) {
-			obstacles [i] = GameObject.CreatePrimitive (PrimitiveType.Cube);
-			//obstacles [i].AddComponent<Rigidbody> ();
-			obstacles [i].transform.position = new Vector3 (Random.Range (-5f, 5f), Random.Range (-5f, 5f), Random.Range (0f, 5f));
-		}
+            spheres[i] = new Obstacle(this.gameObject, new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(0f, 10f)));
+        }
 	
 	}
 	
 	// Update is called once per frame
 	void Update () {
+        accelDir = Vector3.zero;
 		if (Input.GetKey (KeyCode.W))
         {
-			transform.Translate (0, 0, 1 * Time.deltaTime * speed);
+            accelDir.z = 1;
 		}
         else if (Input.GetKey (KeyCode.S))
         {
-			transform.Translate (0, 0, -1 * Time.deltaTime * speed);
+			accelDir.z = -1;
 		}
         if (Input.GetKey (KeyCode.Space))
         {
-            transform.Translate(0, 1 * Time.deltaTime * speed, 0);
+            accelDir.y = 1;
         }
         else if (Input.GetKey(KeyCode.LeftAlt))
         {
-            transform.Translate(0, -1 * Time.deltaTime * speed, 0);
+            accelDir.y = -1;
         }
         if (Input.GetKey(KeyCode.D))
         {
-            transform.Translate(1 * Time.deltaTime * speed, 0, 0);
+            accelDir.x = 1;
         }
         else if (Input.GetKey(KeyCode.A))
         {
-            transform.Translate(-1 * Time.deltaTime * speed, 0, 0);
+            accelDir.x = -1;
         }
 
-        rotationX += Input.GetAxis("Mouse X") * speed;
-        rotationY += Input.GetAxis("Mouse Y") * speed;
+        accelerate();
+
+        rotationX += Input.GetAxis("Mouse X") * maxSpeed;
+        rotationY += Input.GetAxis("Mouse Y") * maxSpeed;
         rotationY = Mathf.Clamp(rotationY, -90F, 90F);
         Quaternion qX = Quaternion.AngleAxis(rotationX, Vector3.up);
         Quaternion qY = Quaternion.AngleAxis(rotationY, Vector3.left);
         transform.localRotation = originalRot * qX * qY;
+    }
+
+
+    void accelerate()
+    {
+        velocity += ((acceleration * accelDir.normalized) - (velocity * deceleration)) * Time.deltaTime;
+        velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+        gameObject.transform.Translate(velocity * Time.deltaTime);
     }
 }
