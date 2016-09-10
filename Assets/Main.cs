@@ -7,9 +7,9 @@ public class Main : MonoBehaviour {
 	public float maxSpeed;
     public float sensitivity;                                           // speed of rotations
     public float acceleration;                                          // ship acceleration
-    public float deceleration;                                          // ship deceleration
 
-    private Obstacle[] spheres;
+    private float deceleration;                                         // ship deceleration
+    private Obstacle[] obstacles;
     private Transform ship;
     private float rotationX = 0F;                                       // Global ship orientation angles
     private float rotationY = 0F;
@@ -18,16 +18,18 @@ public class Main : MonoBehaviour {
     private float tiltRotY = 0F;
     private float tiltRotX = 0F;
     private Vector3 accelDir = Vector3.zero;
-    private Vector3 velocity = Vector3.zero;
+    private Vector3 velocity = Vector3.zero;                            // v in local frame of reference
+    internal Vector3 absVelocity = Vector3.zero;                        // v in world space
 
 	// Use this for initialization
 	void Start () {
-        spheres = new Obstacle[num];
+        obstacles = new Obstacle[num];
         ship = transform.Find("Ship");
+        deceleration = acceleration / maxSpeed;
 
 		int i;
 		for (i = 0; i < num; i++) {
-            spheres[i] = new Obstacle(this.gameObject, new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(0f, 10f)));
+            obstacles[i] = new Obstacle(this, new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(0f, 10f)));
         }
 	
 	}
@@ -70,11 +72,11 @@ public class Main : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.RightArrow))                           // RIGHT ARROW
         {
-            rotationZ = - maxSpeed * sensitivity * Time.deltaTime;
+            rotationZ = - maxSpeed * sensitivity * 2 * Time.deltaTime;
         }
         else if (Input.GetKey(KeyCode.LeftArrow))                       // LEFT ARROW
         {
-            rotationZ = maxSpeed * sensitivity * Time.deltaTime;
+            rotationZ = maxSpeed * sensitivity * 2 * Time.deltaTime;
         }
         else
         {
@@ -82,12 +84,12 @@ public class Main : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.UpArrow))                              // UP ARROW
         {
-            rotationX = maxSpeed * sensitivity * Time.deltaTime;
+            rotationX = maxSpeed * sensitivity * 2 * Time.deltaTime;
             tiltRotX += (tiltRotX + 15F) * Time.deltaTime;
         }
         else if (Input.GetKey(KeyCode.DownArrow))                       // DOWN ARROW
         {
-            rotationX = - maxSpeed * sensitivity * Time.deltaTime;
+            rotationX = - maxSpeed * sensitivity * 2 * Time.deltaTime;
             tiltRotX -= (15F - tiltRotX) * Time.deltaTime;
         }
         else
@@ -96,22 +98,28 @@ public class Main : MonoBehaviour {
             rotationX -= rotationX * deceleration * Time.deltaTime;
         }
 
-        rotationX %= 360;
+        rotationX %= 360;                                               // handle >360 angles
         rotationY %= 360;
         rotationZ %= 360;
 
-        tiltRotZ = Mathf.Clamp(tiltRotZ, -15F, 15F);
+        tiltRotZ = Mathf.Clamp(tiltRotZ, -15F, 15F);                    // limit how far ship tilts
         tiltRotY = Mathf.Clamp(tiltRotY, -15F, 15F);
         tiltRotX = Mathf.Clamp(tiltRotX, -15F, 15F);
         // Ship tilting effects
         Quaternion qTZ = Quaternion.AngleAxis(tiltRotZ, Vector3.forward);
         Quaternion qTY = Quaternion.AngleAxis(tiltRotY, Vector3.up);
         Quaternion qTX = Quaternion.AngleAxis(tiltRotX, Vector3.right);
-
         transform.Rotate(rotationX, rotationY, rotationZ);
+
         ship.localRotation = qTX * qTY * qTZ;
 
         accelerate();
+
+        absVelocity = absoluteVelocity();
+        foreach (Obstacle o in obstacles)
+        {
+            o.update();
+        }
     }
 
 
@@ -120,5 +128,10 @@ public class Main : MonoBehaviour {
         velocity += ((acceleration * accelDir.normalized) - (velocity * deceleration)) * Time.deltaTime;
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
         gameObject.transform.Translate(velocity * Time.deltaTime);
+    }
+
+    Vector3 absoluteVelocity()
+    {
+        return transform.TransformDirection(velocity);
     }
 }
