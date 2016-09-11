@@ -9,8 +9,8 @@ public class Main : MonoBehaviour {
     public float acceleration;                                          // ship acceleration
 
     private float deceleration;                                         // ship deceleration
-    private Obstacle[] obstacles;
-    private Transform ship;
+    private Obstacle[] obstacles;                                       // stores all obstacle objects
+    private Transform ship;                                             // handle to ship for tilting
     private float rotationX = 0F;                                       // Global ship orientation angles
     private float rotationY = 0F;
     private float rotationZ = 0F;
@@ -19,17 +19,19 @@ public class Main : MonoBehaviour {
     private float tiltRotX = 0F;
     private Vector3 accelDir = Vector3.zero;
     private Vector3 velocity = Vector3.zero;                            // v in local frame of reference
-    internal Vector3 absVelocity = Vector3.zero;                        // v in world space
+    public Vector3 absVelocity = Vector3.zero;                        // v in world space
+    private float rotationSpeed;                                        // speed of rotation of ship
 
 	// Use this for initialization
 	void Start () {
         obstacles = new Obstacle[num];
         ship = transform.Find("Ship");
         deceleration = acceleration / maxSpeed;
+        rotationSpeed = maxSpeed * sensitivity;
 
 		int i;
 		for (i = 0; i < num; i++) {
-            obstacles[i] = new Obstacle(this, new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(0f, 10f)));
+            obstacles[i] = new Obstacle(this, new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f)));
         }
 	
 	}
@@ -56,13 +58,13 @@ public class Main : MonoBehaviour {
         if (Input.GetKey(KeyCode.D))                                    // D KEY
         {
             //accelDir.x = 1;
-            rotationY = maxSpeed * sensitivity * Time.deltaTime;
+            rotationY += rotationSpeed * Time.deltaTime * Time.deltaTime;
             tiltRotY += (tiltRotY + 15F) * Time.deltaTime;
         }
         else if (Input.GetKey(KeyCode.A))                               // A KEY
         {
             //accelDir.x = -1;
-            rotationY = - maxSpeed * sensitivity * Time.deltaTime;
+            rotationY -= rotationSpeed * Time.deltaTime * Time.deltaTime;
             tiltRotY -= (15F - tiltRotY) * Time.deltaTime;
         }
         else
@@ -72,11 +74,11 @@ public class Main : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.RightArrow))                           // RIGHT ARROW
         {
-            rotationZ = - maxSpeed * sensitivity * 2 * Time.deltaTime;
+            rotationZ -= rotationSpeed * Time.deltaTime * Time.deltaTime;
         }
         else if (Input.GetKey(KeyCode.LeftArrow))                       // LEFT ARROW
         {
-            rotationZ = maxSpeed * sensitivity * 2 * Time.deltaTime;
+            rotationZ += rotationSpeed * Time.deltaTime * Time.deltaTime;
         }
         else
         {
@@ -84,12 +86,12 @@ public class Main : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.UpArrow))                              // UP ARROW
         {
-            rotationX = maxSpeed * sensitivity * 2 * Time.deltaTime;
+            rotationX += rotationSpeed * Time.deltaTime * Time.deltaTime;
             tiltRotX += (tiltRotX + 15F) * Time.deltaTime;
         }
         else if (Input.GetKey(KeyCode.DownArrow))                       // DOWN ARROW
         {
-            rotationX = - maxSpeed * sensitivity * 2 * Time.deltaTime;
+            rotationX -= rotationSpeed * Time.deltaTime * Time.deltaTime;
             tiltRotX -= (15F - tiltRotX) * Time.deltaTime;
         }
         else
@@ -102,17 +104,19 @@ public class Main : MonoBehaviour {
         rotationY %= 360;
         rotationZ %= 360;
 
+        // Ship tilting effects
         tiltRotZ = Mathf.Clamp(tiltRotZ, -15F, 15F);                    // limit how far ship tilts
         tiltRotY = Mathf.Clamp(tiltRotY, -15F, 15F);
         tiltRotX = Mathf.Clamp(tiltRotX, -15F, 15F);
-        // Ship tilting effects
         Quaternion qTZ = Quaternion.AngleAxis(tiltRotZ, Vector3.forward);
         Quaternion qTY = Quaternion.AngleAxis(tiltRotY, Vector3.up);
         Quaternion qTX = Quaternion.AngleAxis(tiltRotX, Vector3.right);
-        transform.Rotate(rotationX, rotationY, rotationZ);
-
         ship.localRotation = qTX * qTY * qTZ;
 
+        // ship orientation effects
+        transform.Rotate(rotationX, rotationY, rotationZ);
+
+        // ship movement effects
         accelerate();
 
         absVelocity = absoluteVelocity();
